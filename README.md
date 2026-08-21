@@ -1,4 +1,4 @@
-﻿# TheRealNeighbors Minecraft Gateway
+# TheRealNeighbors Minecraft Gateway
 
 A PowerShell script that exposes a locally-running Minecraft server to the internet through a free [Pinggy](https://pinggy.io) TCP tunnel, then automatically keeps your Hostinger DNS SRV record pointed at the current tunnel address. A hot-swap mechanism pre-starts a replacement tunnel before the active one expires, achieving near-zero downtime for players.
 
@@ -182,6 +182,104 @@ Close the other PowerShell window running the script, or kill the existing `ssh`
 - The `.env` file is excluded from version control by `.gitignore`. Do not commit it.
 - The Hostinger API token grants DNS write access to your domain. Treat it as a secret and rotate it if it is ever exposed.
 - The script connects to `tcp@a.pinggy.io` on port 443 using SSH with `StrictHostKeyChecking=no`. This bypasses host key verification for Pinggy's server; acceptable for this use case but worth noting.
+
+---
+
+## Background & Problem History
+
+This section documents why this script exists — the full investigation that led to it.
+
+### The Problem
+
+Java Edition players received **"Connection Timed Out"** when trying to join, while Bedrock Edition players connected and played fine through the same hosting setup.
+
+**Server setup at the time:**
+- Host OS: Windows (Philippines, Parasat ISP)
+- Server software: PaperMC 26.1.2, managed by SquidServers v0.9.5
+- Tunneling: SquidServers' built-in tunnel, powered by playit.gg
+- Cross-play: Geyser-Spigot + Floodgate (working fine)
+- Domain: `play.therealneighbors.online` (Hostinger), plus the tunnel-provided `whiny-cup.gl.joinmc.link`
+
+### Debugging — What Was Tested
+
+| Test | Result |
+|---|---|
+| Bedrock (UDP) via tunnel | ✅ Works perfectly |
+| Java (TCP) via tunnel, domain or raw IP | ❌ Always fails |
+| Local join via `localhost:25565` on host PC | ✅ Works — server itself is healthy |
+| Full server log during successful local join | ✅ Clean — all 14 plugins loaded, player joined/played/disconnected normally |
+| `netstat` — server listening on `0.0.0.0:25565` | ✅ Confirmed |
+| Windows Firewall rules for `java.exe` / Squid | ✅ Allowed (Public + Private); also fully disabled — no change |
+| DNS (A, AAAA, SRV records) for tunnel domain | ✅ Resolve correctly |
+| SRV record target | `whiny-cup.gl.at.ply.gg`, port `50909` (TCP) |
+| Public port open check (canyouseeme.org, portchecker.co) | ✅ Shows open on IPv4 |
+| `mcsrvstat.us` external ping check | ❌ "Unknown problem with returned server data" / "Failed to read from socket" — connects but gets invalid data |
+| Proxy Protocol setting | Set to **None** in playit dashboard; `paper-global.yml` also expects none — no mismatch |
+| `server.properties` | `server-ip=` blank, `online-mode=false`, `prevent-proxy-connections=false` — all normal |
+| Changed local + tunnel port 25565 → 25566 | ❌ No change |
+| Cloudflare WARP (Traffic and DNS mode) on host PC | ❌ No change |
+| Updated DNS to Google (8.8.8.8) + flushed DNS cache | ❌ No change |
+| Disabled IPv6 on Windows network adapter | ❌ No change |
+| Self-test from second PC on same LAN | ❌ "Connection reset" — but playit support confirmed this is **expected** (anti-portscanner protection), not a real signal |
+| playit.gg agent "Allow IPv6" toggle → set to IPv4-only | ❌ No change |
+| playit.gg agent Region → switched from Automatic to Asia | ❌ No change |
+| **Independent test via Pinggy** (`ssh -p 443 -R0:localhost:25566 tcp@a.pinggy.io`), bypassing Squid/playit entirely | ✅ **Friend connected on the first try** |
+
+### Root Cause
+
+The Pinggy test was decisive: with the exact same server, firewall, router, and ISP, a friend connected immediately. This proved that **the problem was isolated specifically to the playit/Squid Java TCP tunnel** — not the server, not Windows Firewall, not the router, not the ISP.
+
+Squid/playit support's diagnosis: most likely a broken IPv6 routing path or a broken relay in playit's TCP tunnel infrastructure for this specific account. TCP and UDP are handled as separate tunnel instances on playit's network, which explains why Bedrock (UDP) worked while Java (TCP) didn't. No fix was available from the dashboard side; support ticket remains open.
+
+### Options Considered for a Permanent Free Fix
+
+| Option | Decision |
+|---|---|
+| Fix playit IPv6/region setting directly | ❌ Tried all settings — no change |
+| Pinggy Pro (~$3/month) | ❌ Ruled out — wanted free only |
+| Oracle Cloud Free Tier VPS as TCP relay via `socat` | ❌ Ruled out — Oracle signup verification kept failing |
+| Cloudflare Tunnel | ❌ Free tier only proxies HTTP/HTTPS; raw TCP (Minecraft Java) requires paid Spectrum or every player installing WARP |
+| Aternos / free host | ❌ Server sleeps when idle, limited/no custom plugin support (would break GrimAC, GriefPrevention, CoreProtect, AuraSkills, SkinsRestorer, LevelledMobs, etc.) |
+| Pumpkin (Rust-based server software) | ❌ Not a hosting/tunnel solution; early development; incompatible with existing Bukkit/Spigot plugin stack |
+| **Pinggy free tier + auto-restart + auto-DNS update** | ✅ **Chosen — fully working, free, automated** |
+
+---
+
+## Current Production Setup
+
+### Java Edition
+
+**Players connect to:** `play.therealneighbors.online` (no port needed)
+
+**How it works:** This script (`minecraft-tunnel-autostart.ps1`) runs continuously on the host PC and:
+1. Opens a free Pinggy SSH TCP tunnel pointed at `localhost:25566`
+2. Parses the public `tcp://host:port` address Pinggy assigns
+3. Automatically updates the Hostinger SRV record (`_minecraft._tcp.play.therealneighbors.online`) via the Hostinger API to point at the new address
+4. Hot-swaps to a fresh tunnel every ~55 minutes (before the free-tier 60-minute expiry) with near-zero downtime
+5. Repeats indefinitely, surviving PC restarts via Windows Task Scheduler
+
+**Auto-start on boot:** Configured via Windows Task Scheduler to run the script silently at startup (hidden PowerShell window, highest privileges).
+
+### Bedrock Edition
+
+**Players connect to:** `bedrock.therealneighbors.online`, port `50909`
+
+**How it works:** Simple static A record in Hostinger pointing `bedrock` → `147.185.221.31` — the stable, working Squid/playit Bedrock UDP tunnel. No changes were ever needed here; Bedrock (UDP) was never broken.
+
+### Current DNS Records (relevant)
+
+| Type | Name | Content | Notes |
+|---|---|---|---|
+| SRV | `_minecraft._tcp.play` | `0 5 <dynamic port> <dynamic Pinggy host>.` | Auto-updated by this script on every tunnel restart |
+| A | `bedrock` | `147.185.221.31` | Static — points at working Bedrock tunnel |
+| CNAME | `play` → `whiny-cup.gl.joinmc.link` | *(stale, safe to delete)* | Leftover from the original broken playit Java tunnel; no longer used since the SRV record takes precedence for Java clients |
+
+### Possible Future Improvements
+
+- Auto-start the Squid/Minecraft server itself on boot (not just this tunnel script), for fully hands-off restart recovery
+- Migrate server management from Squid to **Crafty Controller** (Docker-based) for a nicer UI — independent of the networking setup, which would remain unchanged
+- Delete the stale `play` CNAME record pointing at the old broken playit Java tunnel
+- If Squid/playit support ever resolves the TCP relay bug on their end, could optionally revert to the simpler built-in tunnel
 
 ---
 
