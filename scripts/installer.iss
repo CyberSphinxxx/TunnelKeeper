@@ -22,9 +22,9 @@ DefaultDirName={localappdata}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-OutputDir=Release
+OutputDir=..\Release
 OutputBaseFilename=TunnelKeeper-Setup
-SetupIconFile=TunnelKeeper.ico
+SetupIconFile=..\assets\TunnelKeeper.ico
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
@@ -36,17 +36,17 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
-Source: "TunnelKeeper.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "TunnelKeeper-GUI.ps1"; DestDir: "{app}"; Flags: ignoreversion
-Source: "minecraft-tunnel-autostart.ps1"; DestDir: "{app}"; Flags: ignoreversion
-Source: "TunnelKeeper.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "TunnelKeeper.vbs"; DestDir: "{app}"; Flags: ignoreversion
-Source: "TunnelKeeper.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: ".env.example"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\TunnelKeeper.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\TunnelKeeper-GUI.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\minecraft-tunnel-autostart.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "TunnelKeeper.bat"; DestDir: "{app}\scripts"; Flags: ignoreversion
+Source: "TunnelKeeper.vbs"; DestDir: "{app}\scripts"; Flags: ignoreversion
+Source: "..\assets\TunnelKeeper.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "..\.env.example"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\TunnelKeeper.ico"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\TunnelKeeper.ico"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\TunnelKeeper.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\TunnelKeeper.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

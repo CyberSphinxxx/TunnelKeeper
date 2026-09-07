@@ -9,7 +9,15 @@
 param()
 
 $ScriptDir = $PSScriptRoot
-if (-not $ScriptDir) { $ScriptDir = Get-Location }
+if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
+
+$RepoRoot = if (Test-Path (Join-Path $ScriptDir "..\TunnelKeeper-GUI.ps1")) {
+    (Resolve-Path (Join-Path $ScriptDir "..")).Path
+} elseif (Test-Path (Join-Path $ScriptDir "TunnelKeeper-GUI.ps1")) {
+    $ScriptDir
+} else {
+    (Resolve-Path (Join-Path $ScriptDir "..")).Path
+}
 
 $CscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if (-not (Test-Path $CscPath)) {
@@ -21,8 +29,11 @@ if (-not (Test-Path $CscPath)) {
     exit 1
 }
 
-$IconPath = Join-Path $ScriptDir "TunnelKeeper.ico"
-$OutputExe = Join-Path $ScriptDir "TunnelKeeper.exe"
+$IconPath = Join-Path $RepoRoot "assets\TunnelKeeper.ico"
+if (-not (Test-Path $IconPath)) {
+    $IconPath = Join-Path $RepoRoot "TunnelKeeper.ico"
+}
+$OutputExe = Join-Path $RepoRoot "TunnelKeeper.exe"
 $SourceCodePath = Join-Path $env:TEMP "TunnelKeeperLauncher.cs"
 
 $SourceCode = @"

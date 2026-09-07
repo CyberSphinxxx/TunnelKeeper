@@ -63,11 +63,13 @@ if ($Uninstall) {
 # ------------------------------------------------------------
 Write-Host ""
 Write-Host "  =======================================================" -ForegroundColor Cyan
-Write-Host "   _______ _____  _   _                                 " -ForegroundColor Cyan
-Write-Host "  |__   __|  __ \| \ | |                                " -ForegroundColor Cyan
-Write-Host "     | |  | |__) |  \| |   TunnelKeeper Installer       " -ForegroundColor Cyan
-Write-Host "     | |  |  _  /| . ` |   Minecraft Tunnel & DNS Gate  " -ForegroundColor Cyan
-Write-Host "     |_|  |_|  \_\_| \_|                                " -ForegroundColor Cyan
+Write-Host "   _______ _    _ _   _ _   _ ______ _                  " -ForegroundColor Cyan
+Write-Host "  |__   __| |  | | \ | | \ | |  ____| |                 " -ForegroundColor Cyan
+Write-Host "     | |  | |  | |  \| |  \| | |__  | |                 " -ForegroundColor Cyan
+Write-Host "     | |  | |  | | . ` | . ` |  __| | |                 " -ForegroundColor Cyan
+Write-Host "     | |  | |__| | |\  | |\  | |____| |____             " -ForegroundColor Cyan
+Write-Host "     |_|   \____/|_| \_|_| \_|______|______|            " -ForegroundColor Cyan
+Write-Host "          TunnelKeeper Setup & Installer                " -ForegroundColor Cyan
 Write-Host "  =======================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -110,9 +112,9 @@ $files = @(
     "TunnelKeeper.exe",
     "minecraft-tunnel-autostart.ps1",
     "TunnelKeeper-GUI.ps1",
-    "TunnelKeeper.bat",
-    "TunnelKeeper.vbs",
-    "TunnelKeeper.ico",
+    "scripts/TunnelKeeper.bat",
+    "scripts/TunnelKeeper.vbs",
+    "assets/TunnelKeeper.ico",
     ".env.example"
 )
 
@@ -120,9 +122,13 @@ $files = @(
 $isLocalRepo = (Test-Path (Join-Path $PSScriptRoot "TunnelKeeper-GUI.ps1"))
 
 foreach ($file in $files) {
-    $dest = Join-Path $InstallDir $file
+    $dest = Join-Path $InstallDir ($file -replace '/', '\')
+    $destDir = Split-Path -Parent $dest
+    if (-not (Test-Path $destDir)) {
+        New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+    }
     if ($isLocalRepo) {
-        $source = Join-Path $PSScriptRoot $file
+        $source = Join-Path $PSScriptRoot ($file -replace '/', '\')
         if (Test-Path $source) {
             Copy-Item -Path $source -Destination $dest -Force
             Write-Host "      [Copy] $file" -ForegroundColor DarkGray
@@ -183,7 +189,10 @@ namespace TunnelKeeperLauncher {
 }
 "@
         Set-Content -Path $srcPath -Value $code -Encoding UTF8
-        $iconTarget = Join-Path $InstallDir "TunnelKeeper.ico"
+        $iconTarget = Join-Path $InstallDir "assets\TunnelKeeper.ico"
+        if (-not (Test-Path $iconTarget)) {
+            $iconTarget = Join-Path $InstallDir "TunnelKeeper.ico"
+        }
         $cArgs = @("/target:winexe", "/optimize+", "/out:`"$targetExe`"", "/reference:System.Windows.Forms.dll", "/reference:System.dll")
         if (Test-Path $iconTarget) { $cArgs += "/win32icon:`"$iconTarget`"" }
         $cArgs += "`"$srcPath`""
@@ -209,8 +218,14 @@ Write-Host "[4/5] Creating Windows shortcuts..." -ForegroundColor Yellow
 $wshShell = New-Object -ComObject WScript.Shell
 
 $exePath = Join-Path $InstallDir "TunnelKeeper.exe"
-$vbsPath = Join-Path $InstallDir "TunnelKeeper.vbs"
-$icoPath = Join-Path $InstallDir "TunnelKeeper.ico"
+$vbsPath = Join-Path $InstallDir "scripts\TunnelKeeper.vbs"
+if (-not (Test-Path $vbsPath)) {
+    $vbsPath = Join-Path $InstallDir "TunnelKeeper.vbs"
+}
+$icoPath = Join-Path $InstallDir "assets\TunnelKeeper.ico"
+if (-not (Test-Path $icoPath)) {
+    $icoPath = Join-Path $InstallDir "TunnelKeeper.ico"
+}
 
 $targetApp = if (Test-Path $exePath) { $exePath } else { "$env:SystemRoot\System32\wscript.exe" }
 $targetArgs = if (Test-Path $exePath) { "" } else { "`"$vbsPath`"" }

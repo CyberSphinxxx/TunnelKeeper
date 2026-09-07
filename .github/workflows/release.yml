@@ -50,7 +50,7 @@ jobs:
       - name: Verify PowerShell Syntax
         shell: pwsh
         run: |
-          $scripts = @("minecraft-tunnel-autostart.ps1", "TunnelKeeper-GUI.ps1", "install.ps1", "build-exe.ps1")
+          $scripts = @("minecraft-tunnel-autostart.ps1", "TunnelKeeper-GUI.ps1", "install.ps1", "scripts/build-exe.ps1")
           $failed = $false
           foreach ($s in $scripts) {
               if (Test-Path $s) {
@@ -71,7 +71,7 @@ jobs:
       - name: Compile TunnelKeeper.exe
         shell: pwsh
         run: |
-          .\build-exe.ps1
+          .\scripts\build-exe.ps1
           if (-not (Test-Path "TunnelKeeper.exe")) {
               Write-Error "TunnelKeeper.exe was not created!"
               exit 1
@@ -98,7 +98,7 @@ jobs:
           if (-not (Test-Path "Release")) {
               New-Item -ItemType Directory -Path "Release" -Force | Out-Null
           }
-          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" /DMyAppVersion="$env:VERSION" installer.iss
+          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" /DMyAppVersion="$env:VERSION" scripts\installer.iss
           if (-not (Test-Path "Release\TunnelKeeper-Setup.exe")) {
               Write-Error "Installer compilation failed! Release\TunnelKeeper-Setup.exe was not created."
               exit 1
@@ -115,9 +115,9 @@ jobs:
               "TunnelKeeper.exe",
               "TunnelKeeper-GUI.ps1",
               "minecraft-tunnel-autostart.ps1",
-              "TunnelKeeper.bat",
-              "TunnelKeeper.vbs",
-              "TunnelKeeper.ico",
+              "scripts/TunnelKeeper.bat",
+              "scripts/TunnelKeeper.vbs",
+              "assets/TunnelKeeper.ico",
               ".env.example",
               "README.md"
           )

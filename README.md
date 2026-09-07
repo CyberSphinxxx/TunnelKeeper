@@ -44,15 +44,17 @@ TunnelKeeper/
 ├── .github/workflows/
 │   ├── release.yml                  # Automated CI/CD: compiles TunnelKeeper-Setup.exe & publishes releases
 │   └── ci.yml                       # Continuous Integration: syntax & compilation tests
+├── assets/
+│   └── TunnelKeeper.ico             # High-resolution application and tray icon
+├── scripts/
+│   ├── build-exe.ps1                # Native C# compiler script for TunnelKeeper.exe
+│   ├── installer.iss                # Inno Setup wizard compiler script
+│   ├── TunnelKeeper.bat             # Portable batch launcher
+│   └── TunnelKeeper.vbs             # Silent VBScript runner
 ├── TunnelKeeper.exe                 # Standalone double-clickable GUI launcher (0 console flash)
 ├── TunnelKeeper-GUI.ps1             # Modern native WPF dark-mode dashboard
-├── TunnelKeeper.bat                 # Portable batch launcher
-├── TunnelKeeper.vbs                 # Silent VBScript runner
-├── TunnelKeeper.ico                 # High-resolution application icon
 ├── minecraft-tunnel-autostart.ps1   # Core daemon (tunneling, DNS dispatcher, hot-swap engine)
 ├── install.ps1                      # 1-line PowerShell installer & uninstaller
-├── build-exe.ps1                    # Native C# compiler script for TunnelKeeper.exe
-├── installer.iss                    # Inno Setup wizard compiler script
 ├── .env.example                     # Configuration template with all available settings
 ├── .env                             # Secret token and config storage (auto-saved by GUI)
 ├── .gitignore                       # Excludes .env from version control

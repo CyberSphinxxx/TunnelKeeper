@@ -23,7 +23,10 @@ if (-not $ScriptRoot) { $ScriptRoot = Get-Location }
 
 $CoreScriptPath = Join-Path $ScriptRoot "minecraft-tunnel-autostart.ps1"
 $EnvFilePath    = Join-Path $ScriptRoot ".env"
-$IconFilePath   = Join-Path $ScriptRoot "TunnelKeeper.ico"
+$IconFilePath   = Join-Path $ScriptRoot "assets\TunnelKeeper.ico"
+if (-not (Test-Path $IconFilePath)) {
+    $IconFilePath = Join-Path $ScriptRoot "TunnelKeeper.ico"
+}
 $LogDir         = Join-Path $env:USERPROFILE "TunnelKeeper_Logs"
 
 function Get-PlayerAddress {
