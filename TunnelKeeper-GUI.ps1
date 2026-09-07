@@ -10,6 +10,10 @@ param()
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
 
+$app = [System.Windows.Application]::Current
+if ($null -eq $app) { $app = New-Object System.Windows.Application }
+$app.ShutdownMode = [System.Windows.ShutdownMode]::OnExplicitShutdown
+
 # ------------------------------------------------------------
 # PATHS & CONFIG
 # ------------------------------------------------------------
@@ -909,6 +913,8 @@ $BtnRestartService.Add_Click({
 # ------------------------------------------------------------
 # SYSTEM TRAY INTEGRATION
 # ------------------------------------------------------------
+$script:IsExplicitExit = $false
+
 $notifyIcon = New-Object System.Windows.Forms.NotifyIcon
 if (Test-Path $IconFilePath) {
     $notifyIcon.Icon = New-Object System.Drawing.Icon($IconFilePath)
@@ -933,9 +939,12 @@ $itemStop.Add_Click({ Stop-GatewayService })
 $itemSep2 = $contextMenu.Items.Add("-")
 $itemExit = $contextMenu.Items.Add("Exit TunnelKeeper")
 $itemExit.Add_Click({
+    $script:IsExplicitExit = $true
+    $refreshTimer.Stop()
     $notifyIcon.Visible = $false
     $notifyIcon.Dispose()
     $window.Close()
+    $app.Shutdown()
 })
 $notifyIcon.ContextMenuStrip = $contextMenu
 
@@ -947,7 +956,7 @@ $notifyIcon.Add_DoubleClick({
 
 $BtnMinimizeTray.Add_Click({
     $window.Hide()
-    $notifyIcon.ShowBalloonTip(2000, "TunnelKeeper", "Minimized to tray. Double-click icon to reopen.", [System.Windows.Forms.ToolTipIcon]::Info)
+    $notifyIcon.ShowBalloonTip(2000, "TunnelKeeper", "Running in background. Double-click icon to reopen.", [System.Windows.Forms.ToolTipIcon]::Info)
 })
 
 # ------------------------------------------------------------
@@ -1083,12 +1092,16 @@ $refreshTimer.Add_Tick({
 
 $refreshTimer.Start()
 
-# Clean exit handler
+# Window close handler: intercept X to keep tunnel running in tray
 $window.Add_Closing({
-    $refreshTimer.Stop()
-    $notifyIcon.Visible = $false
-    $notifyIcon.Dispose()
+    param($sender, $e)
+    if (-not $script:IsExplicitExit) {
+        $e.Cancel = $true
+        $window.Hide()
+        $notifyIcon.ShowBalloonTip(2000, "TunnelKeeper", "Minimized to tray. Double-click icon to reopen.", [System.Windows.Forms.ToolTipIcon]::Info)
+    }
 })
 
-# Show UI
-$window.ShowDialog() | Out-Null
+# Show UI and run application loop
+$window.Show()
+$app.Run() | Out-Null
