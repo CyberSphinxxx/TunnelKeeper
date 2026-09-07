@@ -1,0 +1,161 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. v3.0.0)'
+        required: false
+        default: 'v3.0.0'
+      create_release:
+        description: 'Create or update GitHub Release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Installer & Portable Bundle
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Resolve Version
+        shell: pwsh
+        run: |
+          $ref = "${{ github.ref_name }}"
+          $inputVer = "${{ inputs.version }}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and -not [string]::IsNullOrWhiteSpace($inputVer)) {
+              $ver = $inputVer
+          } elseif (-not [string]::IsNullOrWhiteSpace($ref) -and $ref.StartsWith("v")) {
+              $ver = $ref
+          } else {
+              $ver = "v3.0.0"
+          }
+          $clean = $ver.TrimStart("v")
+          Write-Host "Resolved Tag: $ver"
+          Write-Host "Clean Version: $clean"
+          "TAG_NAME=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "VERSION=$clean" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Verify PowerShell Syntax
+        shell: pwsh
+        run: |
+          $scripts = @("minecraft-tunnel-autostart.ps1", "TunnelKeeper-GUI.ps1", "install.ps1", "build-exe.ps1")
+          $failed = $false
+          foreach ($s in $scripts) {
+              if (Test-Path $s) {
+                  $tokens = $null
+                  $errors = $null
+                  [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s), [ref]$tokens, [ref]$errors)
+                  if ($errors -and $errors.Count -gt 0) {
+                      $failed = $true
+                      Write-Error "[FAIL] Syntax error in $s ($($errors.Count) errors)"
+                      $errors | ForEach-Object { Write-Host "  Line $($_.Extent.StartLineNumber): $($_.Message)" }
+                  } else {
+                      Write-Host "[PASS] $s" -ForegroundColor Green
+                  }
+              }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Compile TunnelKeeper.exe
+        shell: pwsh
+        run: |
+          .\build-exe.ps1
+          if (-not (Test-Path "TunnelKeeper.exe")) {
+              Write-Error "TunnelKeeper.exe was not created!"
+              exit 1
+          }
+          $exeSize = (Get-Item "TunnelKeeper.exe").Length
+          Write-Host "Compiled TunnelKeeper.exe successfully ($exeSize bytes)" -ForegroundColor Green
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress
+          $innoDir = "C:\Program Files (x86)\Inno Setup 6"
+          if (Test-Path $innoDir) {
+              $innoDir | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+              Write-Host "Inno Setup found at $innoDir" -ForegroundColor Green
+          } else {
+              Write-Error "Inno Setup installation folder not found!"
+              exit 1
+          }
+
+      - name: Build Windows Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "Release")) {
+              New-Item -ItemType Directory -Path "Release" -Force | Out-Null
+          }
+          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" /DMyAppVersion="$env:VERSION" installer.iss
+          if (-not (Test-Path "Release\TunnelKeeper-Setup.exe")) {
+              Write-Error "Installer compilation failed! Release\TunnelKeeper-Setup.exe was not created."
+              exit 1
+          }
+          $setupSize = (Get-Item "Release\TunnelKeeper-Setup.exe").Length
+          Write-Host "Built Release\TunnelKeeper-Setup.exe ($setupSize bytes)" -ForegroundColor Green
+
+      - name: Package Portable Zip Bundle
+        shell: pwsh
+        run: |
+          $zipName = "TunnelKeeper-$env:TAG_NAME-Portable.zip"
+          $zipPath = Join-Path "Release" $zipName
+          $filesToZip = @(
+              "TunnelKeeper.exe",
+              "TunnelKeeper-GUI.ps1",
+              "minecraft-tunnel-autostart.ps1",
+              "TunnelKeeper.bat",
+              "TunnelKeeper.vbs",
+              "TunnelKeeper.ico",
+              ".env.example",
+              "README.md"
+          )
+          Compress-Archive -Path $filesToZip -DestinationPath $zipPath -Force
+          Write-Host "Created portable archive: $zipPath" -ForegroundColor Green
+
+      - name: Copy Standalone Binary to Release
+        shell: pwsh
+        run: |
+          Copy-Item "TunnelKeeper.exe" -Destination "Release\TunnelKeeper.exe" -Force
+
+      - name: Generate SHA-256 Checksums
+        shell: pwsh
+        run: |
+          $checksumFile = "Release\checksums.txt"
+          Get-ChildItem -Path "Release" -File | Where-Object { $_.Name -ne "checksums.txt" } | ForEach-Object {
+              $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
+              "$hash  $($_.Name)"
+          } | Out-File -FilePath $checksumFile -Encoding utf8
+          Get-Content $checksumFile
+
+      - name: Upload Artifacts to Workflow Run
+        uses: actions/upload-artifact@v4
+        with:
+          name: TunnelKeeper-${{ env.TAG_NAME }}
+          path: Release/*
+
+      - name: Publish Assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.create_release)
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: TunnelKeeper ${{ env.TAG_NAME }}
+          draft: false
+          prerelease: false
+          files: |
+            Release/TunnelKeeper-Setup.exe
+            Release/TunnelKeeper-*-Portable.zip
+            Release/TunnelKeeper.exe
+            Release/checksums.txt
+          generate_release_notes: true
