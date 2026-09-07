@@ -37,8 +37,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\TunnelKeeper.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\TunnelKeeper-GUI.ps1"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\minecraft-tunnel-autostart.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\src\*"; DestDir: "{app}\src"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "TunnelKeeper.bat"; DestDir: "{app}\scripts"; Flags: ignoreversion
 Source: "TunnelKeeper.vbs"; DestDir: "{app}\scripts"; Flags: ignoreversion
 Source: "..\assets\TunnelKeeper.ico"; DestDir: "{app}\assets"; Flags: ignoreversion

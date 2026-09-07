@@ -19,13 +19,35 @@ $app.ShutdownMode = [System.Windows.ShutdownMode]::OnExplicitShutdown
 # ------------------------------------------------------------
 $ScriptRoot  = $PSScriptRoot
 if (-not $ScriptRoot) { $ScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition }
-if (-not $ScriptRoot) { $ScriptRoot = Get-Location }
+if (-not $ScriptRoot) { $ScriptRoot = (Get-Location).Path }
+
+$RepoRoot = if (Test-Path (Join-Path $ScriptRoot "..\.env.example")) {
+    (Resolve-Path (Join-Path $ScriptRoot "..")).Path
+} elseif (Test-Path (Join-Path $ScriptRoot "..\.env")) {
+    (Resolve-Path (Join-Path $ScriptRoot "..")).Path
+} else {
+    $ScriptRoot
+}
 
 $CoreScriptPath = Join-Path $ScriptRoot "minecraft-tunnel-autostart.ps1"
-$EnvFilePath    = Join-Path $ScriptRoot ".env"
-$IconFilePath   = Join-Path $ScriptRoot "assets\TunnelKeeper.ico"
+if (-not (Test-Path $CoreScriptPath)) {
+    $CoreScriptPath = Join-Path $RepoRoot "src\minecraft-tunnel-autostart.ps1"
+}
+if (-not (Test-Path $CoreScriptPath)) {
+    $CoreScriptPath = Join-Path $RepoRoot "minecraft-tunnel-autostart.ps1"
+}
+
+$EnvFilePath = Join-Path $RepoRoot ".env"
+if (-not (Test-Path $EnvFilePath) -and (Test-Path (Join-Path $ScriptRoot ".env"))) {
+    $EnvFilePath = Join-Path $ScriptRoot ".env"
+}
+
+$IconFilePath = Join-Path $RepoRoot "assets\TunnelKeeper.ico"
 if (-not (Test-Path $IconFilePath)) {
-    $IconFilePath = Join-Path $ScriptRoot "TunnelKeeper.ico"
+    $IconFilePath = Join-Path $ScriptRoot "assets\TunnelKeeper.ico"
+}
+if (-not (Test-Path $IconFilePath)) {
+    $IconFilePath = Join-Path $RepoRoot "TunnelKeeper.ico"
 }
 $LogDir         = Join-Path $env:USERPROFILE "TunnelKeeper_Logs"
 

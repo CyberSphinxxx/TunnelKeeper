@@ -51,9 +51,11 @@ TunnelKeeper/
 │   ├── installer.iss                # Inno Setup wizard compiler script
 │   ├── TunnelKeeper.bat             # Portable batch launcher
 │   └── TunnelKeeper.vbs             # Silent VBScript runner
+├── src/
+│   ├── main.ps1                     # Unified entrypoint (CLI & GUI dispatcher)
+│   ├── TunnelKeeper-GUI.ps1         # Modern native WPF dark-mode dashboard
+│   └── minecraft-tunnel-autostart.ps1 # Core daemon (tunneling, DNS dispatcher, hot-swap engine)
 ├── TunnelKeeper.exe                 # Standalone double-clickable GUI launcher (0 console flash)
-├── TunnelKeeper-GUI.ps1             # Modern native WPF dark-mode dashboard
-├── minecraft-tunnel-autostart.ps1   # Core daemon (tunneling, DNS dispatcher, hot-swap engine)
 ├── install.ps1                      # 1-line PowerShell installer & uninstaller
 ├── .env.example                     # Configuration template with all available settings
 ├── .env                             # Secret token and config storage (auto-saved by GUI)
@@ -109,23 +111,31 @@ irm https://raw.githubusercontent.com/CyberSphinxxx/TunnelKeeper/main/install.ps
 Open PowerShell and run:
 
 ```powershell
-.\minecraft-tunnel-autostart.ps1
+# Run the headless background daemon
+.\src\main.ps1 -Headless
 ```
 
 #### CLI Parameters
 
 | Parameter | Type | Description |
 |---|---|---|
+| `-Gui` | Switch | Launches the interactive native WPF dashboard (default when no parameters are specified). |
+| `-Headless` / `-Daemon` | Switch | Runs the tunneling engine interactively in the terminal console. |
 | `-Status` | Switch | Inspects the current state of the gateway without disturbing running services. Displays whether the tunnel is active, local Minecraft server health, public SRV DNS target, active SSH processes, and recent log entries. |
 | `-Force` | Switch | Stops the background Task Scheduler task (`Minecraft Tunnel Keeper`), terminates any lingering Pinggy `ssh` processes, and takes over running the tunnel interactively in the current terminal. |
+| `-Validate` | Switch | Validates that `.env` is present and necessary provider tokens and domains are set. |
+| `-Version` | Switch | Displays the current TunnelKeeper version. |
 
 Examples:
 ```powershell
 # Check live gateway status
-.\minecraft-tunnel-autostart.ps1 -Status
+.\src\main.ps1 -Status
 
 # Take over and restart the tunnel interactively
-.\minecraft-tunnel-autostart.ps1 -Force
+.\src\main.ps1 -Force
+
+# Validate configuration
+.\src\main.ps1 -Validate
 ```
 
 #### Viewing Background Logs

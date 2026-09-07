@@ -11,9 +11,11 @@ param()
 $ScriptDir = $PSScriptRoot
 if (-not $ScriptDir) { $ScriptDir = (Get-Location).Path }
 
-$RepoRoot = if (Test-Path (Join-Path $ScriptDir "..\TunnelKeeper-GUI.ps1")) {
+$RepoRoot = if (Test-Path (Join-Path $ScriptDir "..\src\main.ps1")) {
     (Resolve-Path (Join-Path $ScriptDir "..")).Path
-} elseif (Test-Path (Join-Path $ScriptDir "TunnelKeeper-GUI.ps1")) {
+} elseif (Test-Path (Join-Path $ScriptDir "..\TunnelKeeper-GUI.ps1")) {
+    (Resolve-Path (Join-Path $ScriptDir "..")).Path
+} elseif (Test-Path (Join-Path $ScriptDir "src\main.ps1")) {
     $ScriptDir
 } else {
     (Resolve-Path (Join-Path $ScriptDir "..")).Path
@@ -48,11 +50,20 @@ namespace TunnelKeeperLauncher {
         static void Main(string[] args) {
             try {
                 string exeDir = AppDomain.CurrentDomain.BaseDirectory;
-                string guiScript = Path.Combine(exeDir, "TunnelKeeper-GUI.ps1");
+                string script = Path.Combine(exeDir, "src", "main.ps1");
+                if (!File.Exists(script)) {
+                    script = Path.Combine(exeDir, "main.ps1");
+                }
+                if (!File.Exists(script)) {
+                    script = Path.Combine(exeDir, "src", "TunnelKeeper-GUI.ps1");
+                }
+                if (!File.Exists(script)) {
+                    script = Path.Combine(exeDir, "TunnelKeeper-GUI.ps1");
+                }
                 
-                if (!File.Exists(guiScript)) {
+                if (!File.Exists(script)) {
                     MessageBox.Show(
-                        "Could not locate 'TunnelKeeper-GUI.ps1' in:\n" + exeDir,
+                        "Could not locate 'src/main.ps1' or 'TunnelKeeper-GUI.ps1' in:\n" + exeDir,
                         "TunnelKeeper Launcher Error",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error
@@ -60,7 +71,7 @@ namespace TunnelKeeperLauncher {
                     return;
                 }
 
-                string argLine = "-NoProfile -Sta -ExecutionPolicy Bypass -File \"" + guiScript + "\"";
+                string argLine = "-NoProfile -Sta -ExecutionPolicy Bypass -File \"" + script + "\"";
                 if (args != null && args.Length > 0) {
                     argLine += " " + string.Join(" ", args);
                 }

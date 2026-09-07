@@ -26,7 +26,7 @@ jobs:
       - name: Verify PowerShell Syntax
         shell: pwsh
         run: |
-          $scripts = @("minecraft-tunnel-autostart.ps1", "TunnelKeeper-GUI.ps1", "install.ps1", "scripts/build-exe.ps1")
+          $scripts = @("src/main.ps1", "src/TunnelKeeper-GUI.ps1", "src/minecraft-tunnel-autostart.ps1", "install.ps1", "scripts/build-exe.ps1")
           $failed = $false
           foreach ($s in $scripts) {
               if (Test-Path $s) {

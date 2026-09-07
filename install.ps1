@@ -110,8 +110,9 @@ Write-Host "[3/5] Installing application files..." -ForegroundColor Yellow
 
 $files = @(
     "TunnelKeeper.exe",
-    "minecraft-tunnel-autostart.ps1",
-    "TunnelKeeper-GUI.ps1",
+    "src/main.ps1",
+    "src/TunnelKeeper-GUI.ps1",
+    "src/minecraft-tunnel-autostart.ps1",
     "scripts/TunnelKeeper.bat",
     "scripts/TunnelKeeper.vbs",
     "assets/TunnelKeeper.ico",
@@ -119,7 +120,7 @@ $files = @(
 )
 
 # If running from local repository, copy locally. Otherwise, download from GitHub.
-$isLocalRepo = (Test-Path (Join-Path $PSScriptRoot "TunnelKeeper-GUI.ps1"))
+$isLocalRepo = (Test-Path (Join-Path $PSScriptRoot "src\main.ps1")) -or (Test-Path (Join-Path $PSScriptRoot "TunnelKeeper-GUI.ps1"))
 
 foreach ($file in $files) {
     $dest = Join-Path $InstallDir ($file -replace '/', '\')
@@ -166,12 +167,15 @@ namespace TunnelKeeperLauncher {
         static void Main(string[] args) {
             try {
                 string exeDir = AppDomain.CurrentDomain.BaseDirectory;
-                string guiScript = Path.Combine(exeDir, "TunnelKeeper-GUI.ps1");
-                if (!File.Exists(guiScript)) {
-                    MessageBox.Show("Could not locate 'TunnelKeeper-GUI.ps1' in:\n" + exeDir, "TunnelKeeper Launcher Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                string script = Path.Combine(exeDir, "src", "main.ps1");
+                if (!File.Exists(script)) { script = Path.Combine(exeDir, "main.ps1"); }
+                if (!File.Exists(script)) { script = Path.Combine(exeDir, "src", "TunnelKeeper-GUI.ps1"); }
+                if (!File.Exists(script)) { script = Path.Combine(exeDir, "TunnelKeeper-GUI.ps1"); }
+                if (!File.Exists(script)) {
+                    MessageBox.Show("Could not locate 'src/main.ps1' or 'TunnelKeeper-GUI.ps1' in:\n" + exeDir, "TunnelKeeper Launcher Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
-                string argLine = "-NoProfile -Sta -ExecutionPolicy Bypass -File \"" + guiScript + "\"";
+                string argLine = "-NoProfile -Sta -ExecutionPolicy Bypass -File \"" + script + "\"";
                 if (args != null && args.Length > 0) { argLine += " " + string.Join(" ", args); }
                 ProcessStartInfo psi = new ProcessStartInfo {
                     FileName = "powershell.exe",

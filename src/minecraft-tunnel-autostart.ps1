@@ -36,6 +36,12 @@ $HotSwapMinute      = 55
 $LogRetentionDays   = 14
 
 $EnvPath = Join-Path $PSScriptRoot ".env"
+if (-not (Test-Path $EnvPath)) {
+    $parentEnv = Join-Path (Split-Path -Parent $PSScriptRoot) ".env"
+    if (Test-Path $parentEnv) {
+        $EnvPath = $parentEnv
+    }
+}
 if (Test-Path $EnvPath) {
     foreach ($line in Get-Content $EnvPath) {
         $trimmed = $line.Trim()
