@@ -1,0 +1,55 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+
+jobs:
+  test:
+    name: Syntax & Build Validation
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify PowerShell Syntax
+        shell: pwsh
+        run: |
+          $scripts = @("minecraft-tunnel-autostart.ps1", "TunnelKeeper-GUI.ps1", "install.ps1", "build-exe.ps1")
+          $failed = $false
+          foreach ($s in $scripts) {
+              if (Test-Path $s) {
+                  $tokens = $null
+                  $errors = $null
+                  [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s), [ref]$tokens, [ref]$errors)
+                  if ($errors -and $errors.Count -gt 0) {
+                      $failed = $true
+                      Write-Error "[FAIL] Syntax error in $s ($($errors.Count) errors)"
+                      $errors | ForEach-Object { Write-Host "  Line $($_.Extent.StartLineNumber): $($_.Message)" }
+                  } else {
+                      Write-Host "[PASS] $s (0 syntax errors)" -ForegroundColor Green
+                  }
+              }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Test Native Compilation
+        shell: pwsh
+        run: |
+          .\build-exe.ps1
+          if (-not (Test-Path "TunnelKeeper.exe")) {
+              Write-Error "Failed to compile TunnelKeeper.exe!"
+              exit 1
+          }
+          Write-Host "TunnelKeeper.exe compiled cleanly." -ForegroundColor Green
