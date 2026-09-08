@@ -1,8 +1,28 @@
 # TunnelKeeper
 
-A modern Windows gateway that exposes your locally-running Minecraft server to the internet through a free [Pinggy](https://pinggy.io) TCP tunnel, automatically keeping your **Hostinger** or **Cloudflare** DNS SRV records updated. A hot-swap mechanism pre-starts a replacement tunnel before the active one expires, achieving near-zero downtime for players.
+**Play multiplayer on your locally-hosted Minecraft server without router port forwarding, without monthly fees, and without making your friends install Radmin VPN, Hamachi, or Tailscale.**
 
-Includes a **sleek Windows 11 dark-mode desktop GUI**, system tray minimization, and a **1-line PowerShell installer**.
+A modern Windows gateway with a native dark-mode desktop GUI that keeps your custom domain (`play.yourdomain.com`) connected to your local server 24/7.
+
+---
+
+## What is TunnelKeeper? (In Plain English)
+
+TunnelKeeper is **not** a Minecraft server itself. Instead, it is the automated **port forwarding and domain bridge** for your server.
+
+If you run a Minecraft server on your PC (using PaperMC, Fabric, Forge, or panels like SquidServer) and want your friends to join from their own homes, you usually hit one of these roadblocks:
+- **Your router won't let you port forward** (or your ISP uses CGNAT, you live in an apartment or college dorm, or you don't have router admin access).
+- **You don't want your friends to install Radmin VPN, Hamachi, or Tailscale** just to connect to your world for a casual gaming session.
+- **You don't want to pay $10–$25 every month** for third-party game hosting or paid port-forwarding tools when your PC is already running the server fine.
+- **Free tunnels give random addresses that change every hour**: Free tunneling services like Pinggy disconnect after 60 minutes and assign a random new port each time, forcing you to send new server addresses to your friends constantly.
+
+### How TunnelKeeper Fixes This:
+1. **Zero-Config Port Forwarding**: Safely tunnels your local server port to the internet through [Pinggy](https://pinggy.io), completely bypassing router firewall rules, locked modems, and CGNAT.
+2. **Zero Downloads for Friends**: Your friends install **nothing**. No VPNs, no network drivers, no accounts. They simply launch vanilla Minecraft and type your custom domain (`play.yourdomain.com`).
+3. **Seamless 24/7 Hot-Swapping**: TunnelKeeper pre-starts a replacement tunnel at minute 55 and automatically updates your DNS (**Hostinger** or **Cloudflare**) in the background so your domain always points to the active tunnel with near-zero downtime.
+4. **Friendly Desktop App**: Includes a native Windows 11 dark-mode dashboard. You can configure your domain and start or stop port forwarding in 1 click without touching configuration files or code.
+
+> **Also Supports Other Games**: While optimized for Minecraft with automatic port-free domain routing (via DNS SRV records), TunnelKeeper can forward any local TCP port for other co-op games (Palworld, Terraria, Valheim) or local development web servers.
 
 ---
 
@@ -53,8 +73,11 @@ TunnelKeeper/
 │   └── TunnelKeeper.vbs             # Silent VBScript runner
 ├── src/
 │   ├── main.ps1                     # Unified entrypoint (CLI & GUI dispatcher)
-│   ├── TunnelKeeper-GUI.ps1         # Modern native WPF dark-mode dashboard
-│   └── minecraft-tunnel-autostart.ps1 # Core daemon (tunneling, DNS dispatcher, hot-swap engine)
+│   ├── TunnelKeeper-GUI.ps1         # Modern native WPF dashboard orchestrator
+│   ├── minecraft-tunnel-autostart.ps1 # Hot-swap tunnel daemon orchestrator
+│   ├── core/                        # Shared business logic (.env Config, Logger, Network diagnostics)
+│   ├── providers/                   # Pluggable DNS providers (Cloudflare & Hostinger REST APIs)
+│   └── gui/                         # Presentation layer (MainWindow.xaml, SystemTray, Dashboard controller)
 ├── TunnelKeeper.exe                 # Standalone double-clickable GUI launcher (0 console flash)
 ├── install.ps1                      # 1-line PowerShell installer & uninstaller
 ├── .env.example                     # Configuration template with all available settings
@@ -268,7 +291,7 @@ The script disables QuickEdit mode on startup to prevent this. If the terminal w
   ```
 - To stop the background task and force an interactive restart in your current console, run:
   ```powershell
-  .\minecraft-tunnel-autostart.ps1 -Force
+  .\src\main.ps1 -Force
   ```
 - If another manual PowerShell session is open, close that window or run the command above with `-Force` to terminate leftover `ssh` tunnels.
 
