@@ -26,20 +26,18 @@ jobs:
       - name: Verify PowerShell Syntax
         shell: pwsh
         run: |
-          $scripts = @("src/main.ps1", "src/TunnelKeeper-GUI.ps1", "src/minecraft-tunnel-autostart.ps1", "install.ps1", "scripts/build-exe.ps1")
+          $scripts = Get-ChildItem -Path . -Recurse -Filter "*.ps1" | Where-Object { $_.FullName -notmatch '\\\.git\\' }
           $failed = $false
           foreach ($s in $scripts) {
-              if (Test-Path $s) {
-                  $tokens = $null
-                  $errors = $null
-                  [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $s), [ref]$tokens, [ref]$errors)
-                  if ($errors -and $errors.Count -gt 0) {
-                      $failed = $true
-                      Write-Error "[FAIL] Syntax error in $s ($($errors.Count) errors)"
-                      $errors | ForEach-Object { Write-Host "  Line $($_.Extent.StartLineNumber): $($_.Message)" }
-                  } else {
-                      Write-Host "[PASS] $s (0 syntax errors)" -ForegroundColor Green
-                  }
+              $tokens = $null
+              $errors = $null
+              [System.Management.Automation.Language.Parser]::ParseFile($s.FullName, [ref]$tokens, [ref]$errors)
+              if ($errors -and $errors.Count -gt 0) {
+                  $failed = $true
+                  Write-Error "[FAIL] Syntax error in $($s.FullName) ($($errors.Count) errors)"
+                  $errors | ForEach-Object { Write-Host "  Line $($_.Extent.StartLineNumber): $($_.Message)" }
+              } else {
+                  Write-Host "[PASS] $($s.FullName.Replace((Get-Location).Path, ''))" -ForegroundColor Green
               }
           }
           if ($failed) { exit 1 }
